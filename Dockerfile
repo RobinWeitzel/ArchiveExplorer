@@ -2,7 +2,6 @@ FROM node:10
 
 ENV mongourl url
 ENV mongodb mailarchive
-ENV port 8080
 
 WORKDIR /app
 
@@ -11,3 +10,4 @@ RUN npm install
 COPY . /app
 
 CMD node index.js
+EXPOSE 8081

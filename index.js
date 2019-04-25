@@ -8,7 +8,6 @@ const bodyParser = require('body-parser');
 
 const url = process.env.mongourl; // i.e. 'mongodb://localhost:27017'
 const dbName = process.env.mongodb;
-const port = process.env.port;
 
 app.set('view engine', 'ejs')
 app.use(express.static('public'));
@@ -102,5 +101,5 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
         });
     });
 
-    server.listen(port);
+    server.listen(8081);
 });
