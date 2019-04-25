@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        #left {
+            border-right: 1px solid lightgray;
+            height: calc(100vh - 56px);
+        }
+
+        #left,
+        #right {
+            padding-top: 15px;
+        }
+
+        #search {
+            margin-bottom: 15px;
+        }
+
+        #search-results {
+            overflow-y: auto;
+            height: calc(100% - 255px);
+        }
+
+        .list-group-item.active .text-muted {
+            color: white !important;
+        }
+
+        #from,
+        #to {
+            background-color: white;
+        }
+
+        h6 {
+            margin-bottom: 0px;
+        }
+
+        a {
+            text-decoration: none !important;
+        }
+
+        a:hover 
+        {
+            text-decoration:none !important; 
+            cursor:pointer !important;  
+        }
+
+        .badge-primary {
+            color: white !important;
+        }
+
+        .badge-light {
+            color: black !important;
+        }
+    </style>
+    <title>Email Archive</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo01"
+            aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarTogglerDemo01">
+            <a class="navbar-brand" href="#">Email Archive</a>
+            <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Dashboard</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="/search">Search <span class="sr-only">(current)</span></a>
+                </li>
+            </ul>
+            <form class="form-inline my-2 my-lg-0">
+                <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+                <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Search</button>
+            </form>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-3" id="left">
+                <div class="card" style="margin-bottom: 15px;">
+                    <div class="card-header">
+                        Search
+                    </div>
+                    <div class="card-body">
+                        <input type="text" class="form-control" placeholder="Full text search" aria-label="Search"
+                            id="search">
+                        <h6>Select mailboxes to search</h6>
+                        <div id="collections">
+                            <% for(var i=0; i < collections.length; i++) { %>
+                                <a href="#" class="badge badge-primary"><%= collections[i] %></a>
+                            <% } %>
+                        </div>
+                        <h6 style="margin-top: 10px;">Select fields to search</h6>
+                        <div id="fields">
+                            <a href="#" class="badge badge-primary">Subject</a>
+                            <a href="#" class="badge badge-primary">Content</a>
+                            <a href="#" class="badge badge-primary">Sender</a>
+                            <a href="#" class="badge badge-primary">Date</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="list-group" id="search-results">
+                </div>
+            </div>
+            <div class="col-9" id="right">
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">From</span>
+                    </div>
+                    <input type="text" class="form-control" id="from" aria-describedby="basic-addon1" disabled>
+                </div>
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon2">To</span>
+                    </div>
+                    <input type="text" class="form-control" id="to" aria-describedby="basic-addon2" disabled>
+                </div>
+                <div id="email">
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script>
+        /**
+         * Returns the value of a query parameter or false, if none was found
+         * 
+         * @param {String} v The name of the query parameter we are looking for
+         * @returns {String | boolean } A String, if the parameter was found, otherwise false
+         */
+        const getQueryVariable = v => {
+            const query = window.location.search.substring(1);
+            const vars = query.split("&");
+            let pair;
+            for (let i = 0; i < vars.length; i++) {
+                pair = vars[i].split("=");
+                if (pair[0] == v) { return pair[1]; }
+            }
+            return false;
+        }
+
+        $(function () {
+            const socket = io();
+            let results = {};
+
+            const search = () => {      
+                $('#search-results').empty();
+                results = {};
+                socket.emit('search', {value: $('#search').val(), collections: $.map($('#collections .badge-primary'), i=>i.innerHTML), fields: $.map($('#fields .badge-primary'), i=>i.innerHTML)});
+            }
+
+            let searchString = getQueryVariable('search');
+
+            if (searchString) {
+                $('#search').val(searchString);
+                search();
+            }
+
+            $('#search').on('input', e => {
+                search();
+            });
+
+            $("#search-form").submit(e => {
+                e.preventDefault();
+                window.location.href = `/search?search=${$('#search-form > input').val()}`;
+            });
+
+            $('.card').on('click', '.badge-primary', e => {
+                $(e.currentTarget).removeClass('badge-primary');
+                $(e.currentTarget).addClass('badge-light');
+                search();
+            });
+
+            $('.card').on('click', '.badge-light', e => {
+                $(e.currentTarget).removeClass('badge-light');
+                $(e.currentTarget).addClass('badge-primary');
+                search();
+            });
+
+            $('#search-results').on('click', '.list-group-item', e => {
+                $('.list-group-item').removeClass('active');
+                $(e.currentTarget).addClass('active');
+
+                const result = results[$(e.currentTarget).attr('id')].value;
+                let from = "";
+                let to = "";
+
+                for (let f of result.from) {
+                    from += f.address + "; ";
+                }
+
+                from = from.substr(0, from.length - 2);
+
+                for (let t of result.to) {
+                    to += t.address + "; ";
+                }
+
+                to = to.substr(0, to.length - 2);
+
+                let content = result.html;
+                content = content || result.text;
+                content = content || result.subject;
+                content = content || "";
+
+                $('#from').val(from);
+                $('#to').val(to);
+                $('#email').html(content);
+            });
+
+            socket.on('search result', result => {
+                if (result.searchTerm !== $('#search').val()) {
+                    return;
+                }
+
+                result = result.data;
+
+                results[result.value._id] = result;
+                $('#search-results').append(`
+                    <a href="#" class="list-group-item list-group-item-action" id="${result.value._id}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">${result.value.subject}</h5>
+                            <small class="text-muted">${result.value.date}</small>
+                        </div>
+                        <p class="mb-1">${result.value.text != undefined ? result.value.text.substring(0, 75) : ""}</p>
+                        <small class="text-muted">${result.value.from[0].name} (${result.value.from[0].address})</small>
+                    </a>
+                `);
+            });
+        });
+
+    </script>
+</body>
+
+</html>

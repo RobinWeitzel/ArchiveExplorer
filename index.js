@@ -6,9 +6,9 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const bodyParser = require('body-parser');
 
-const url = process.env.mongourl; // i.e. 'mongodb://localhost:27017'
-const dbName = process.env.mongodb;
-const port = process.env.port;
+const url = 'mongodb://192.168.10.24:27017'; //process.env.mongourl; // i.e. 'mongodb://localhost:27017'
+const dbName = 'mailarchive'; // process.env.mongodb;
+const port = 3000 //process.env.port;
 
 app.set('view engine', 'ejs')
 app.use(express.static('public'));
@@ -33,34 +33,57 @@ const find = (collection, filter, options, data, end) => {
     stream.on('data', data);
 }
 
-const searchEmails = (db, filter, options, data, end) => {
-    listCollections(db).then(async collections => {
-        let counter = 0;
-        for (let collection of collections) {
-            find(db.collection(collection), filter, options, d => data({ collection: collection, value: d }), () => {
-                counter++;
+const searchEmails = (db, collections, filter, options, data, end) => {
+    let counter = 0;
+    for (let collection of collections) {
+        find(db.collection(collection), filter, options, d => data({ collection: collection, value: d }), () => {
+            counter++;
 
-                if (counter === collections.length) {
-                    end();
-                }
-            });
-        }
-    });
+            if (counter === collections.length) {
+                end();
+            }
+        });
+    }
 }
 
-MongoClient.connect(`${url}/${dbName}`, { useNewUrlParser: true }, (err, database) => {
+MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
     if (err) throw err;
 
     const client = database;
     const db = client.db(dbName);
 
     io.on('connection', socket => {
-        socket.on('search', searchterm => {
+        socket.on('search', query => {
+            const searchTerm = query.value;
+            const collections = query.collections;
 
-            const regex = new RegExp(searchterm);
-            const htmlRegex = new RegExp(`${searchterm}(?![^<>]*(([\/\"']|]]|\b)>))`)
+            const fields = [];
+            const regex = new RegExp(searchTerm);
+            const htmlRegex = new RegExp(`${searchTerm}(?![^<>]*(([\/\"']|]]|\b)>))`)
 
-            searchEmails(db, { $or: [{ subject: regex }, { text: regex }, {html: htmlRegex}, { from: regex }, { to: regex }, { date: regex }] }, {}, data => io.emit('search result', {searchTerm: searchterm, data: data}), () => {});
+            for(let field of query.fields) {
+                switch(field) {
+                    case "Subject":
+                        fields.push({ subject: regex });
+                        break;
+                    case "Content":
+                        fields.push({ text: regex });
+                        fields.push({html: htmlRegex});
+                        break;
+                    case "Sender":
+                        fields.push({ from: regex });
+                        break;
+                    case "Date":
+                        fields.push({ date: regex });
+                        break;
+                }
+            }
+
+            if(fields.length === 0) {
+                return;
+            }
+
+            searchEmails(db, collections, { $or: fields }, {}, data => io.emit('search result', {searchTerm: searchTerm, data: data}), () => {});
         });
     });
 
@@ -71,6 +94,12 @@ MongoClient.connect(`${url}/${dbName}`, { useNewUrlParser: true }, (err, databas
 
     app.get('/', function (req, res) {
         res.render('index');
+    });
+
+    app.get('/search', function (req, res) {
+        listCollections(db).then(collections => {
+            res.render('search', {collections: collections});
+        });
     });
 
     server.listen(port);
