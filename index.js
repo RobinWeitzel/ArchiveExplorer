@@ -6,9 +6,9 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const bodyParser = require('body-parser');
 
-const url = 'mongodb://192.168.10.24:27017'; //process.env.mongourl; // i.e. 'mongodb://localhost:27017'
-const dbName = 'mailarchive'; // process.env.mongodb;
-const port = 3000 //process.env.port;
+const url = process.env.mongourl; // i.e. 'mongodb://localhost:27017'
+const dbName = process.env.mongodb;
+const port = process.env.port;
 
 app.set('view engine', 'ejs')
 app.use(express.static('public'));
