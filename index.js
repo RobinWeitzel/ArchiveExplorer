@@ -6,7 +6,7 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const bodyParser = require('body-parser');
 
-const url = process.env.mongourl; // i.e. 'mongodb://localhost:27017'
+const url = process.env.mongourl;   // i.e. 'mongodb://localhost:27017'
 const dbName = process.env.mongodb;
 
 app.set('view engine', 'ejs')
