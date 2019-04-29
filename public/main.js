@@ -83,7 +83,7 @@ function start() {
  * @param {String} title 
  */
 const create_m_i_incoming_chart = (div_id, data_points, title ) => {
-	let chart_multi_inbox_incoming_amounts = new frappe.Chart(div_id, {  // or a DOM element,
+	let chart_multi_inbox_incoming_amounts = new frappe.Chart(div_id, {
 		title: title,
 		data: data_points,
 		type: 'axis-mixed', 
@@ -95,7 +95,7 @@ const create_m_i_incoming_chart = (div_id, data_points, title ) => {
 
 
 /**
- * Creates a chart with the given data and inserts into the div 
+ * Creates a chart with the given data and inserts it into the given div 
  * @param {String} div_id 
  * @param {JSON Object} data_points of the following format:
  * 	{
@@ -108,32 +108,32 @@ const create_m_i_incoming_chart = (div_id, data_points, title ) => {
  * @param {Function} on_change_function 
  */
 const create_s_i_activity_interactive_chart = (div_id, data_points, title, on_change_function) => {
-	     let chart_single_inbox_activity = new frappe.Chart( div_id, {
-	          data: data_points,
-	          title: title,
-	          type: 'bar',
-	          height: 140,
-	          colors: ['blue'],
-	          isNavigable: true // default: false
-	      });
-	      chart_single_inbox_activity.parent.addEventListener('data-select', on_change_function);
-	      return chart_single_inbox_activity;
-	}
+	let chart_single_inbox_activity = new frappe.Chart( div_id, {
+		data: data_points,
+		title: title,
+		type: 'bar',
+		height: 140,
+		colors: ['blue'],
+		isNavigable: true // default: false
+	});
+	chart_single_inbox_activity.parent.addEventListener('data-select', on_change_function);
+	return chart_single_inbox_activity;
+}
 	
 
 /**
-*Returns the value of a query parameter or false, if none was found
-*@param {String} div_id 	The name of div to insert the chart in
-*@param {String} data_points The datapoints as a JSON Object of the following format:
-*						{
-*							'1546300800': 8,
-*							...
-*							'1546400800': 1
-*						}
-*					    Warning: must be within one year, otherwise throws an error.
-*@param {String} title The name of div to insert the chart in
-*@returns {String} chart
-**/
+ * Creates a chart with the given data and inserts it into the given div 
+ * @param {String} div_id 	The name of div to insert the chart in
+ * @param {String} data_points The datapoints as a JSON Object of the following format:
+ *						{
+ *							'1546300800': 8,
+ *							...
+ *							'1546400800': 1
+ *						}
+ *					    Warning: must be within one year, otherwise throws an error.
+ * @param {String} title The name of div to insert the chart in
+ * @returns {String} chart
+ */
 const create_s_i_activity_heatmap = (div_id, data_points, title, show_legend) => {
 
 	//Check the timespan for validity (must be in the same year)
@@ -168,7 +168,7 @@ const create_s_i_activity_heatmap = (div_id, data_points, title, show_legend) =>
 	}
 
 	//Create the chart
-	let chart = new frappe.Chart(div_id, {
+	let chart_s_i_activity_heatmap = new frappe.Chart(div_id, {
 		type: 'heatmap',
 		title: title,
 		height: height,
@@ -181,5 +181,5 @@ const create_s_i_activity_heatmap = (div_id, data_points, title, show_legend) =>
 		discreteDomains: 1,
 		colors: ['#ebedf0', '#c0ddf9', '#73b3f3', '#3886e1', '#17459e']
 	});
-	return chart;
+	return chart_s_i_activity_heatmap;
 }
