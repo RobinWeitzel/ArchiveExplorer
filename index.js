@@ -1,5 +1,4 @@
 const MongoClient = require('mongodb').MongoClient;
-const assert = require('assert');
 const express = require('express');
 const app = express();
 const server = require('http').createServer(app);
@@ -10,7 +9,7 @@ const url = process.env.mongourl;   // i.e. 'mongodb://localhost:27017'
 const dbName = process.env.mongodb;
 
 app.set('view engine', 'ejs')
-app.use(express.static('public'));
+//app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -26,23 +25,22 @@ const listCollections = async db => {
     });
 }
 
-const find = (collection, filter, options, data, end) => {
+const find = (collection, filter, options, data) => {
     const stream = collection.find(filter, options).stream();
-    stream.on('end', end);
     stream.on('data', data);
 }
 
-const searchEmails = (db, collections, filter, options, data, end) => {
-    let counter = 0;
+const searchEmails = (db, collections, filter, options, data) => {
     for (let collection of collections) {
-        find(db.collection(collection), filter, options, d => data({ collection: collection, value: d }), () => {
-            counter++;
-
-            if (counter === collections.length) {
-                end();
-            }
-        });
+        find(db.collection(collection), filter, options, d => data({ collection: collection, value: d }));
     }
+}
+
+const countEmails = (db, collections, data) => {
+    for (let collection of collections) {
+        stream = db.collection(collection).aggregate([{$match: {date: {$gte: new Date((new Date().getTime() - (6 * 24 * 60 * 60 * 1000)))}}}, {"$group": {_id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } }, count: { $sum: 1 }}}]).stream();
+        stream.on('data', result => data([collection, result]));
+    } 
 }
 
 MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
@@ -52,6 +50,14 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
     const db = client.db(dbName);
 
     io.on('connection', socket => {
+        socket.on('chart1', () => {
+            listCollections(db).then(collections => {
+                countEmails(db, collections, result => {
+                    io.emit('chart1', result);
+                });
+            });
+        });
+        
         socket.on('search', query => {
             const searchTerm = query.value;
             const collections = query.collections;
@@ -82,7 +88,7 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
                 return;
             }
 
-            searchEmails(db, collections, { $or: fields }, {}, data => io.emit('search result', {searchTerm: searchTerm, data: data}), () => {});
+            searchEmails(db, collections, { $or: fields }, {}, data => io.emit('search result', {searchTerm: searchTerm, data: data}));
         });
     });
 
@@ -92,7 +98,9 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
     });
 
     app.get('/', function (req, res) {
-        res.render('index');
+        listCollections(db).then(collections => {
+            res.render('index', {collections: collections});
+        });
     });
 
     app.get('/search', function (req, res) {

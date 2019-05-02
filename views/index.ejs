@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <style>
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+        }
+
+        .no-legend .heatmap-legend-unit {
+            display: none;
+        }
+
+        .no-legend .chart-legend .subdomain-name {
+            display: none;
+        }
+
+        /* This is just so it doesn't look like shit*/
+        #emails_on_that_day {
+            font-family: 'Helvetica';
+            padding: 20px;
+            font-size: 14px;
+        }
+    </style>
+    <title>Email Archive</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo01"
+            aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarTogglerDemo01">
+            <a class="navbar-brand" href="#">Email Archive</a>
+            <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/">Dashboard <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/search">Search</a>
+                </li>
+            </ul>
+            <form id="search-form" class="form-inline my-2 my-lg-0">
+                <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+                <button class="btn btn-outline-light my-2 my-sm-0" type="submit">Search</button>
+            </form>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div id="chart_multi_inbox_incoming_amounts"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script src="https://unpkg.com/frappe-charts@1.1.0/dist/frappe-charts.min.iife.js"></script>
+    <script>
+        /**
+        * Creates a chart with the given data and inserts into the div 
+        * @param {String} div_id 
+        * @param {JSON Object} data_points of the following format:
+        * {
+        *		labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        *		datasets: [
+        *			{
+        *				name: "Some Data", type: "bar",
+        *				values: [25, 40, 30, 35, 8, 52, 17]
+        *			},
+        *			{
+        *				name: "Another Set", type: "line",
+        *				values: [25, 50, -10, 15, 18, 32, 27]
+        *			}
+        *		]
+        *	}
+        * @param {String} title 
+        */
+
+        const collections = <%- JSON.stringify(collections) %>;
+   
+        class Chart {
+            /**
+             * Creates an instance of Chart
+             * @params {Object} chart a frappe.Chart
+             * @params {Function} preprocess (optional) a function which is called to preprocess data before adding it to the chart
+             */
+            constructor(chart, preprocess) {
+                this.chart = chart;
+                this.preprocess = preprocess || ((data, newData) => [...data, ...newData]); // If no preprocessing defined, just pass the data along
+            }
+
+            /**
+             * Adds new data to the chart
+             * @params {Object} newData the new data to be added
+             */
+            update(newData) {
+                const data = this.preprocess(this.chart.data, newData);
+
+                this.chart.update(data);
+            }
+        }
+
+        const chart_multi_inbox_incoming_amounts = new Chart(new frappe.Chart("#chart_multi_inbox_incoming_amounts", { 
+                title: "Received E-Mails per Account",
+                data: {
+                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], 
+                    datasets: collections.map(c => {
+                        return {name: c, type: "bar", values: new Array(7).fill(0)}
+                    })
+                },
+                type: 'axis-mixed',
+                height: 350
+        }), (data, newData) => {
+            const inbox = newData[0];
+            const id = newData[1]['_id'];
+            const count = newData[1]['count'];
+            const date = new Date(id.year, id.month - 1, id.day);
+            const dayOfWeek = date.getDay() - 1; // -1 since the count starts at sunday, but we want to start at monday
+
+            if(dayOfWeek > (new Date().getDay() - 1)) { // emails were received last week
+                return data;
+            }
+
+            let dataset = data['datasets'].filter(d => d.name === inbox)[0];
+
+            dataset.values[dayOfWeek] = count;
+
+            return data;
+        });
+    </script>
+    <script>
+        $(function () {
+            const socket = io();
+
+            // Returns [<inbox>, {count, _id: {day, month, year}}]
+            socket.on('chart1', result => {
+                chart_multi_inbox_incoming_amounts.update(result);
+            });
+
+            socket.emit('chart1');
+
+            $("#search-form").submit(e => {
+                e.preventDefault();
+                window.location.href = `/search?search=${$('#search-form > input').val()}`;
+            });
+        });
+
+    </script>
+</body>
+
+</html>
