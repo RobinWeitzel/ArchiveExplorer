@@ -43,6 +43,20 @@ const countEmails = (db, collections, data) => {
     } 
 }
 
+const countEmailsYear = (db, collections, year, data) => {
+    for (let collection of collections) {
+        stream = db.collection(collection).aggregate([{$match: {date: {$gte: new Date(year, 0, 1), $lt: new Date(year + 1, 0, 1)}}}, {"$group": {_id : { month: { $month: "$date" }, day: { $dayOfMonth: "$date" }, year: { $year: "$date" } }, count: { $sum: 1 }}}]).stream();
+        stream.on('data', result => data([collection, result]));
+    } 
+}
+
+const countFrom = (db, collections, data) => {
+    for (let collection of collections) {
+        stream = db.collection(collection).aggregate([{$match: {date: {$gte: new Date((new Date().getTime() - (31 * 24 * 60 * 60 * 1000)))}}}, {"$group": {_id : "$from", count: { $sum: 1 }}}, {$sort: {count: -1}}, { $limit : 3 }]).stream();
+        stream.on('data', result => data([collection, result]));
+    } 
+}
+
 MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
     if (err) throw err;
 
@@ -53,7 +67,28 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
         socket.on('chart1', () => {
             listCollections(db).then(collections => {
                 countEmails(db, collections, result => {
+                    const id =  result[1]['_id'];
+                    if (new Date(id.year, id.month - 1, id.day).getDay() > (new Date().getDay())) { // emails were received last week
+                        return;
+                    }
+
                     io.emit('chart1', result);
+                });
+            });
+        });
+
+        socket.on('chart2', year => {
+            listCollections(db).then(collections => {
+                countEmailsYear(db, collections, year, result => {
+                    io.emit('chart2', result);
+                });
+            });
+        });
+
+        socket.on('chart3', () => {
+            listCollections(db).then(collections => {
+                countFrom(db, collections, result => {
+                    io.emit('chart3', result);
                 });
             });
         });

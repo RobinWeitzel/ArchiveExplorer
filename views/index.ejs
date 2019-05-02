@@ -57,7 +57,26 @@
         </div>
     </nav>
     <div class="container-fluid">
-        <div id="chart_multi_inbox_incoming_amounts"></div>
+        <div class="row">
+            <div id="chart_multi_inbox_incoming_amounts" class="col-12"></div>
+        </div>
+        <div class="row">
+            <div id="chart_single_inbox_activity_heatmap_single" class="no-legend col-6"></div>
+            <div id="table" class="col-6">
+                <p style="font-size: 12px; color: #666666;">Most frequent senders</p>
+                <table class="table table-borderless table-sm">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
@@ -73,28 +92,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
     <script src="https://unpkg.com/frappe-charts@1.1.0/dist/frappe-charts.min.iife.js"></script>
     <script>
-        /**
-        * Creates a chart with the given data and inserts into the div 
-        * @param {String} div_id 
-        * @param {JSON Object} data_points of the following format:
-        * {
-        *		labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-        *		datasets: [
-        *			{
-        *				name: "Some Data", type: "bar",
-        *				values: [25, 40, 30, 35, 8, 52, 17]
-        *			},
-        *			{
-        *				name: "Another Set", type: "line",
-        *				values: [25, 50, -10, 15, 18, 32, 27]
-        *			}
-        *		]
-        *	}
-        * @param {String} title 
-        */
-
         const collections = <%- JSON.stringify(collections) %>;
-   
+
         class Chart {
             /**
              * Creates an instance of Chart
@@ -117,16 +116,16 @@
             }
         }
 
-        const chart_multi_inbox_incoming_amounts = new Chart(new frappe.Chart("#chart_multi_inbox_incoming_amounts", { 
-                title: "Received E-Mails per Account",
-                data: {
-                    labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], 
-                    datasets: collections.map(c => {
-                        return {name: c, type: "bar", values: new Array(7).fill(0)}
-                    })
-                },
-                type: 'axis-mixed',
-                height: 350
+        const chart_multi_inbox_incoming_amounts = new Chart(new frappe.Chart("#chart_multi_inbox_incoming_amounts", {
+            title: "Received E-Mails per Account",
+            data: {
+                labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                datasets: collections.map(c => {
+                    return { name: c, type: "bar", values: new Array(7).fill(0) }
+                })
+            },
+            type: 'axis-mixed',
+            height: 350
         }), (data, newData) => {
             const inbox = newData[0];
             const id = newData[1]['_id'];
@@ -134,16 +133,96 @@
             const date = new Date(id.year, id.month - 1, id.day);
             const dayOfWeek = date.getDay() - 1; // -1 since the count starts at sunday, but we want to start at monday
 
-            if(dayOfWeek > (new Date().getDay() - 1)) { // emails were received last week
-                return data;
-            }
-
             let dataset = data['datasets'].filter(d => d.name === inbox)[0];
 
             dataset.values[dayOfWeek] = count;
 
             return data;
         });
+
+        const chart_s_i_activity_heatmap = new Chart(new frappe.Chart("#chart_single_inbox_activity_heatmap_single", {
+            type: 'heatmap',
+            title: "E-Mails this year",
+            height: 150,
+            data: {
+                dataPoints: {
+                },
+                start: new Date(new Date().getFullYear(), 0, 1),
+                end: new Date(new Date().getFullYear(), 11, 31)
+            },
+            countLabel: 'E-Mails',
+            discreteDomains: 1,
+            colors: ['#ebedf0', '#c0ddf9', '#73b3f3', '#3886e1', '#17459e']
+        }), (data, newData) => {
+            const inbox = newData[0];
+            const id = newData[1]['_id'];
+            const count = newData[1]['count'];
+            const date = new Date(id.year, id.month - 1, id.day);
+            const start = new Date(id.year, 0, 1);
+            const day = Math.floor((date - start) / 86400000);
+            const ms = String(1546300800 + day * 86400);
+
+            if (ms in data['dataPoints']) {
+                data['dataPoints'][ms] += count;
+            } else {
+                data['dataPoints'][ms] = count;
+            }
+
+            return data;
+        });
+
+        /*
+            <tr>
+                <th scope="row">1</th>
+                <td>Mark</td>
+                <td>Otto</td>
+            </tr>
+        */
+        const tr = data => {
+            const count = data.count;
+            const name = data['_id'][0].name || "";
+            const address = data['_id'][0].address || "";
+
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('th');
+            const td2 = document.createElement('td');
+            const td3 = document.createElement('td');
+
+            td1.appendChild(document.createTextNode(count));
+            td1.setAttribute("scope", "row");
+            td2.appendChild(document.createTextNode(name));
+            td3.appendChild(document.createTextNode(address));
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+
+            return tr;
+        }
+
+        const table = new Chart({
+            data: [],
+            update: data => {
+                const tbody = document.querySelector('table tbody');
+
+                // Clear table
+                while (tbody.firstChild) {
+                    tbody.removeChild(tbody.firstChild);
+                }
+
+                data.forEach(d => tbody.appendChild(tr(d)));
+            }
+        },
+            (data, newData) => {
+                const inbox = newData[0];
+                const value = newData[1];
+                data.push(value);
+
+                data = data.sort((a, b) => a.count < b.count ? -1 : 1).slice(0, 3);
+
+                return data;
+            });
+
     </script>
     <script>
         $(function () {
@@ -154,7 +233,19 @@
                 chart_multi_inbox_incoming_amounts.update(result);
             });
 
+            // Returns [<inbox>, {count, _id: {day, month, year}}]
+            socket.on('chart2', result => {
+                chart_s_i_activity_heatmap.update(result);
+            });
+
+            // Returns [<inbox>, {count, _id: [address, name]]
+            socket.on('chart3', result => {
+                table.update(result);
+            });
+
             socket.emit('chart1');
+            socket.emit('chart2', new Date().getUTCFullYear());
+            socket.emit('chart3');
 
             $("#search-form").submit(e => {
                 e.preventDefault();
