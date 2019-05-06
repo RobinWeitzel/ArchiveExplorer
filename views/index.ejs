@@ -223,7 +223,7 @@
                 const value = newData[1];
                 data.push(value);
 
-                data = data.sort((a, b) => a.count < b.count ? -1 : 1).slice(0, 3);
+                data = data.sort((a, b) => a.count > b.count ? -1 : 1).slice(0, 3);
 
                 return data;
             });
