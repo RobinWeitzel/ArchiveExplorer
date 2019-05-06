@@ -152,7 +152,7 @@
 
             let dataset = data['datasets'].filter(d => d.name === inbox)[0];
 
-            dataset.values[6 - diffInDays] = count;
+            dataset.values[6 - diff] = count;
 
             return data;
         });
