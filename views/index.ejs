@@ -140,6 +140,14 @@
             return data;
         });
 
+        const padZero = number => {
+            if(number < 10) {
+                return 0 + String(number);
+            } else {
+                return String(number);
+            }
+        }
+
         const chart_s_i_activity_heatmap = new Chart(new frappe.Chart("#chart_single_inbox_activity_heatmap_single", {
             type: 'heatmap',
             title: "E-Mails this year",
@@ -157,15 +165,12 @@
             const inbox = newData[0];
             const id = newData[1]['_id'];
             const count = newData[1]['count'];
-            const date = new Date(id.year, id.month - 1, id.day);
-            const start = new Date(id.year, 0, 1);
-            const day = Math.floor((date - start) / 86400000);
-            const ms = String(1546300800 + day * 86400);
+            const date = `${id.year}-${padZero(id.month)}-${padZero(id.day)}`;
 
-            if (ms in data['dataPoints']) {
-                data['dataPoints'][ms] += count;
+            if (date in data['dataPoints']) {
+                data['dataPoints'][date] += count;
             } else {
-                data['dataPoints'][ms] = count;
+                data['dataPoints'][date] = count;
             }
 
             return data;
