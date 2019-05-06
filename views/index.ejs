@@ -116,10 +116,27 @@
             }
         }
 
+        const computeLabels = () => {
+            const baseline = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const date = new Date();
+            const day = date.getDay() + 1; // Shift the day by one so that the current day is at the end of the graph (since we want to see the previous week)
+
+            const part1 = baseline.slice(0, day);
+            const part2 = baseline.slice(day);
+
+            return [...part2, ...part1];
+        }
+
+        const diffInDays = (date1, date2) => {
+            const diffTime = Math.abs(date2.getTime() - date1.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            return diffDays;
+        }
+
         const chart_multi_inbox_incoming_amounts = new Chart(new frappe.Chart("#chart_multi_inbox_incoming_amounts", {
             title: "Received E-Mails per Account",
             data: {
-                labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                labels: computeLabels(),
                 datasets: collections.map(c => {
                     return { name: c, type: "bar", values: new Array(7).fill(0) }
                 })
@@ -131,11 +148,11 @@
             const id = newData[1]['_id'];
             const count = newData[1]['count'];
             const date = new Date(id.year, id.month - 1, id.day);
-            const dayOfWeek = date.getDay() - 1; // -1 since the count starts at sunday, but we want to start at monday
+            const diff = diffInDays(new Date(), date);
 
             let dataset = data['datasets'].filter(d => d.name === inbox)[0];
 
-            dataset.values[dayOfWeek] = count;
+            dataset.values[6 - diffInDays] = count;
 
             return data;
         });

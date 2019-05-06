@@ -67,11 +67,6 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
         socket.on('chart1', () => {
             listCollections(db).then(collections => {
                 countEmails(db, collections, result => {
-                    const id =  result[1]['_id'];
-                    if (new Date(id.year, id.month - 1, id.day).getDay() > (new Date().getDay())) { // emails were received last week
-                        return;
-                    }
-
                     io.emit('chart1', result);
                 });
             });
