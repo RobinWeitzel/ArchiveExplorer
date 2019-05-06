@@ -148,7 +148,8 @@
             const id = newData[1]['_id'];
             const count = newData[1]['count'];
             const date = new Date(id.year, id.month - 1, id.day);
-            const diff = diffInDays(new Date(), date);
+            const date2 = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+            const diff = diffInDays(date2, date);
 
             let dataset = data['datasets'].filter(d => d.name === inbox)[0];
 
