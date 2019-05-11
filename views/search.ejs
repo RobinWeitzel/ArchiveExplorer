@@ -185,8 +185,11 @@
                 search();
             }
 
-            $('#search').on('input', e => {
-                search();
+            $('#search').on('keydown', e => {
+                if (e.which == 13) {
+                    e.preventDefault();
+                    search();
+                }
             });
 
             $("#search-form").submit(e => {
