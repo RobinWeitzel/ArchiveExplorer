@@ -171,11 +171,12 @@
         $(function () {
             const socket = io();
             let results = {};
+            let counter = 0;
 
             const search = () => {      
                 $('#search-results').empty();
                 results = {};
-                socket.emit('search', {value: $('#search').val(), collections: $.map($('#collections .badge-primary'), i=>i.innerHTML), fields: $.map($('#fields .badge-primary'), i=>i.innerHTML)});
+                socket.emit('search', {value: $('#search').val(), counter: counter, collections: $.map($('#collections .badge-primary'), i=>i.innerHTML), fields: $.map($('#fields .badge-primary'), i=>i.innerHTML)});
             }
 
             let searchString = getQueryVariable('search');
@@ -187,6 +188,7 @@
 
             $('#search').on('keydown', e => {
                 if (e.which == 13) {
+                    counter++;
                     e.preventDefault();
                     search();
                 }
@@ -240,7 +242,7 @@
             });
 
             socket.on('search result', result => {
-                if (result.searchTerm !== $('#search').val()) {
+                if (result.searchTerm !== $('#search').val() || counter !== result.counter) {
                     return;
                 }
 

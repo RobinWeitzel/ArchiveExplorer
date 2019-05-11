@@ -91,6 +91,7 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
         socket.on('search', query => {
             const searchTerm = query.value;
             const collections = query.collections;
+            const counter = query.counter;
 
             const fields = [];
             const regex = new RegExp(searchTerm);
@@ -118,7 +119,7 @@ MongoClient.connect(url, { useNewUrlParser: true }, (err, database) => {
                 return;
             }
 
-            searchEmails(db, collections, { $or: fields }, {}, data => io.emit('search result', {searchTerm: searchTerm, data: data}));
+            searchEmails(db, collections, { $or: fields }, {}, data => io.emit('search result', {searchTerm: searchTerm, counter: counter, data: data}));
         });
     });
 
